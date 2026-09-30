@@ -7,6 +7,8 @@ import {
   paletteForLegacyEditorTheme,
   parseNoteProsePalette,
   resolveNoteProse,
+  DEFAULT_NOTE_PROSE_CSS,
+  noteProseCssDropsDeclarations,
   sanitizeNoteProseCss,
 } from "@edgeever/shared";
 
@@ -86,6 +88,30 @@ describe("note prose", () => {
       customCss: "   ",
       customColors: null,
     })).toEqual({});
+  });
+
+  test("ships a light and dark starter sheet without font size or line height", () => {
+    expect(DEFAULT_NOTE_PROSE_CSS).toContain("/* 正文。text-indent 是首行缩进，margin-bottom 是段距。 */");
+    expect(DEFAULT_NOTE_PROSE_CSS).toContain("text-indent: 0;");
+    expect(DEFAULT_NOTE_PROSE_CSS).toContain("/* 深色 · 标题 */");
+    expect(DEFAULT_NOTE_PROSE_CSS).toContain("color: #212121;");
+    expect(DEFAULT_NOTE_PROSE_CSS).toContain("color: #dee3e0;");
+    expect(DEFAULT_NOTE_PROSE_CSS).not.toContain("font-size");
+    expect(DEFAULT_NOTE_PROSE_CSS).not.toContain("line-height");
+    const sanitized = sanitizeNoteProseCss(DEFAULT_NOTE_PROSE_CSS);
+    expect(sanitized).toContain(":root.dark p");
+    expect(sanitized).toContain("color: #dee3e0");
+    expect(DEFAULT_NOTE_PROSE_CSS.indexOf(":root.dark p")).toBeGreaterThan(DEFAULT_NOTE_PROSE_CSS.indexOf("p {"));
+    expect(DEFAULT_NOTE_PROSE_CSS.indexOf(":root.dark p")).toBeLessThan(DEFAULT_NOTE_PROSE_CSS.indexOf("/* 一级标题 */"));
+    expect(DEFAULT_NOTE_PROSE_CSS.indexOf(":root.dark a")).toBeGreaterThan(DEFAULT_NOTE_PROSE_CSS.indexOf("\na {"));
+    expect(DEFAULT_NOTE_PROSE_CSS.indexOf(":root.dark a")).toBeLessThan(DEFAULT_NOTE_PROSE_CSS.indexOf("/* 粗体 */"));
+    expect(noteProseCssDropsDeclarations(DEFAULT_NOTE_PROSE_CSS)).toBe(false);
+    expect(noteProseCssDropsDeclarations("p { color: red; }")).toBe(false);
+    expect(noteProseCssDropsDeclarations("p { font-size: 18px; color: red; }")).toBe(true);
+    expect(noteProseCssDropsDeclarations("p { line-height: 2; }")).toBe(true);
+    expect(noteProseCssDropsDeclarations("p { color: red; } /* font-size: 1px */")).toBe(false);
+    expect(noteProseCssDropsDeclarations('@import "x.css"; p { color: red; }')).toBe(true);
+    expect(new TextEncoder().encode(DEFAULT_NOTE_PROSE_CSS).byteLength).toBeLessThan(MAX_NOTE_PROSE_CSS_BYTES);
   });
 
   test("rejects a stylesheet larger than 8 KB", () => {
